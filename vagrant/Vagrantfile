@@ -1,0 +1,41 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.define "DB_VM" do |db|
+    db.vm.hostname = "db-vm"
+    db.vm.box = "ubuntu/jammy64"
+    db.vm.network "private_network", ip: "192.168.45.102"
+    db.vm.provider "virtualbox" do |vb|
+      vb.name = "db-vm"
+      vb.memory = "2024"
+      vb.cpus = 2
+    end
+    db.vm.provision "shell", inline: <<-SHELL
+      echo "export DB_HOST=192.168.45.102" >> /etc/environment
+      echo "export DB_PASS=dbpassword" >> /etc/environment
+      echo "export DB_USER=dbuser" >> /etc/environment
+      echo "export DB_NAME=app_db" >> /etc/environment
+      echo "export DB_PORT=3306" >> /etc/environment
+      echo "export DB_ROOT_PASS=toor" >> /etc/environment
+    SHELL
+    db.vm.provision "shell", path: "mysql_install.sh"
+  end
+
+  config.vm.define "APP_VM" do |app|
+    app.vm.hostname = "app-vm"
+    app.vm.box = "ubuntu/jammy64"
+    app.vm.network "private_network", ip: "192.168.45.101"
+    app.vm.network "forwarded_port", guest: 8080, host: 8082
+    app.vm.provider "virtualbox" do |vb|
+      vb.name = "app-vm"
+      vb.memory = "2048"
+      vb.cpus = 2
+    end
+    app.vm.synced_folder File.expand_path("../PetClinic", __dir__), "/home/vagrant/PROJECT_DIR"
+    app.vm.provision "shell", inline: <<-SHELL
+      echo "export APP_USER=app_user" >> /etc/environment
+    SHELL
+    app.vm.provision "shell", path: "app_install.sh"
+  end
+end
