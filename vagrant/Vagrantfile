@@ -1,40 +1,48 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
+require 'dotenv'
+Dotenv.load('.env')
 
 Vagrant.configure("2") do |config|
   config.vm.define "DB_VM" do |db|
     db.vm.hostname = "db-vm"
-    db.vm.box = "ubuntu/jammy64"
-    db.vm.network "private_network", ip: "192.168.45.102"
+    db.vm.box = ENV['DEFAULT_BOX']
+    db.vm.network "private_network", ip: ENV['DB_HOST']
     db.vm.provider "virtualbox" do |vb|
       vb.name = "db-vm"
       vb.memory = "2024"
       vb.cpus = 2
     end
     db.vm.provision "shell", inline: <<-SHELL
-      echo "export DB_HOST=192.168.45.102" >> /etc/environment
-      echo "export DB_PASS=dbpassword" >> /etc/environment
-      echo "export DB_USER=dbuser" >> /etc/environment
-      echo "export DB_NAME=app_db" >> /etc/environment
-      echo "export DB_PORT=3306" >> /etc/environment
-      echo "export DB_ROOT_PASS=toor" >> /etc/environment
+      echo "export DB_HOST=#{ENV['DB_HOST']}" >> /etc/environment
+      echo "export DB_PASS=#{ENV['DB_PASS']}" >> /etc/environment
+      echo "export DB_USER=#{ENV['DB_USER']}" >> /etc/environment
+      echo "export DB_NAME=#{ENV['DB_NAME']}" >> /etc/environment
+      echo "export DB_PORT=#{ENV['DB_PORT']}" >> /etc/environment
+      echo "export DB_ROOT_PASS=#{ENV['DB_ROOT_PASS']}" >> /etc/environment
     SHELL
     db.vm.provision "shell", path: "mysql_install.sh"
   end
 
   config.vm.define "APP_VM" do |app|
     app.vm.hostname = "app-vm"
-    app.vm.box = "ubuntu/jammy64"
-    app.vm.network "private_network", ip: "192.168.45.101"
-    app.vm.network "forwarded_port", guest: 8080, host: 8082
+    app.vm.box = ENV['DEFAULT_BOX']
+    app.vm.network "private_network", ip: ENV['APP_HOST']
+    app.vm.network "forwarded_port", guest: ENV['APP_GUEST_PORT'], host: ENV['APP_HOST_PORT']
     app.vm.provider "virtualbox" do |vb|
       vb.name = "app-vm"
       vb.memory = "2048"
       vb.cpus = 2
     end
-    app.vm.synced_folder File.expand_path("../PetClinic", __dir__), "/home/vagrant/PROJECT_DIR"
+    app.vm.synced_folder File.expand_path("../PetClinic", __dir__), "/home/vagrant/#{ENV['PROJECT_DIR']}"
     app.vm.provision "shell", inline: <<-SHELL
-      echo "export APP_USER=app_user" >> /etc/environment
+      echo "export APP_USER=#{ENV['APP_USER']}" >> /etc/environment
+      echo "export APP_DIR=#{ENV['APP_DIR']}" >> /etc/environment
+      echo "export DB_HOST=#{ENV['DB_HOST']}" >> /etc/environment
+      echo "export DB_PORT=#{ENV['DB_PORT']}" >> /etc/environment
+      echo "export DB_USER=#{ENV['DB_USER']}" >> /etc/environment
+      echo "export DB_PASS=#{ENV['DB_PASS']}" >> /etc/environment
+      echo "export PROJECT_DIR=#{ENV['PROJECT_DIR']}" >> /etc/environment
     SHELL
     app.vm.provision "shell", path: "app_install.sh"
   end
